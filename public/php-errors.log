@@ -1,0 +1,12 @@
+[14-Oct-2026 17:08:39 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function CodeIgniter\Autoloader\mb_strpos() in C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Autoloader\FileLocator.php:287
+Stack trace:
+#0 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Config\BaseService.php(478): CodeIgniter\Autoloader\FileLocator->findQualifiedNameFromPath('C:\\Users\\Admini...')
+#1 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Config\BaseService.php(343): CodeIgniter\Config\BaseService::buildServicesCache()
+#2 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Config\BaseService.php(328): CodeIgniter\Config\BaseService::serviceExists('exceptions')
+#3 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Config\BaseService.php(203): CodeIgniter\Config\BaseService::__callStatic('exceptions', Array)
+#4 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Common.php(1096): CodeIgniter\Config\BaseService::get('exceptions')
+#5 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Boot.php(333): service('exceptions')
+#6 C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Boot.php(159): CodeIgniter\Boot::setExceptionHandler()
+#7 C:\Users\Administrator\florig-rober\spark(87): CodeIgniter\Boot::bootSpark(Object(Config\Paths))
+#8 {main}
+  thrown in C:\Users\Administrator\florig-rober\vendor\codeigniter4\framework\system\Autoloader\FileLocator.php on line 287
