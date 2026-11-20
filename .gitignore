@@ -119,3 +119,7 @@ _modules/*
 
 /results/
 /phpunit.xml
+
+# Local development files
+/php.ini
+/writable/*.db
