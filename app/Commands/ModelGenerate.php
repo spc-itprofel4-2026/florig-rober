@@ -9,15 +9,15 @@ class ModelGenerate extends BaseCommand
 {
     protected $group       = 'Model Driven';
     protected $name        = 'model:generate';
-    protected $description = 'Generates code from a platform independent model file.';
-    protected $usage       = 'model:generate <modelfile> [target]';
+    protected $description = 'Generates code from a platform independent model file with optional marks.';
+    protected $usage       = 'model:generate <modelfile> [target] [marksfile]';
 
     protected $arguments = [
-        'modelfile' => 'Path of the model file, for example app/PIM/customer_order.json',
-        'target'    => 'ci4 (migration and model class) or sql (a SQL script). Default: ci4',
+        'modelfile' => 'Path of the model file.',
+        'target'    => 'ci4 or sql. Default: ci4',
+        'marksfile' => 'Optional path of the marking model JSON file.',
     ];
 
-    // Mapping rules for the target ci4: model type => [database type, size]
     private array $ci4Types = [
         'text'        => ['VARCHAR', 255],
         'longtext'    => ['TEXT', null],
@@ -28,7 +28,6 @@ class ModelGenerate extends BaseCommand
         'datetime'    => ['DATETIME', null],
     ];
 
-    // Mapping rules for the target sql: model type => SQL type
     private array $sqlTypes = [
         'text'        => 'VARCHAR(255)',
         'longtext'    => 'TEXT',
@@ -41,12 +40,12 @@ class ModelGenerate extends BaseCommand
 
     public function run(array $params)
     {
-        $file   = $params[0] ?? null;
-        $target = $params[1] ?? 'ci4';
+        $file      = $params[0] ?? null;
+        $target    = $params[1] ?? 'ci4';
+        $marksFile = $params[2] ?? null;
 
         if ($file === null || ! is_file(ROOTPATH . $file)) {
-            CLI::error('Model file not found. Example:
-app/PIM/customer_order.json');
+            CLI::error('Model file not found.');
             return;
         }
 
@@ -67,16 +66,43 @@ app/PIM/customer_order.json');
             return;
         }
 
+        $marks = [];
+
+        if ($marksFile !== null) {
+            if (! is_file(ROOTPATH . $marksFile)) {
+                CLI::error('Marking model file not found.');
+                return;
+            }
+
+            $marks = json_decode(
+                (string) file_get_contents(ROOTPATH . $marksFile),
+                true
+            );
+
+            $error = $this->checkMarks($model, $marks);
+
+            if ($error !== null) {
+                CLI::error($error);
+                return;
+            }
+        }
+
         $entity = $model['entity'];
-        $table  = $this->snake($entity) . 's';
+        $table  = $marks['marks']['tableName']
+            ?? $this->snake($entity) . 's';
 
         $fields = [];
 
         foreach ($model['fields'] as $f) {
+            $fieldMarks = $marks['fields'][$f['name']] ?? [];
+
             $fields[] = [
+                'name'     => $f['name'],
                 'column'   => $this->snake($f['name']),
                 'type'     => $f['type'],
                 'required' => ! empty($f['required']),
+                'unique'   => $fieldMarks['unique'] ?? false,
+                'size'     => $fieldMarks['size'] ?? null,
             ];
         }
 
@@ -88,7 +114,6 @@ app/PIM/customer_order.json');
         }
     }
 
-    // Returns an error message, or null when the model file is fine.
     private function check($model): ?string
     {
         if (! is_array($model)) {
@@ -98,7 +123,7 @@ app/PIM/customer_order.json');
         $entity = $model['entity'] ?? '';
 
         if (! preg_match('/^[A-Z][A-Za-z]*$/', $entity)) {
-            return 'entity must be letters only and start with a capital letter.';
+            return 'entity must start with a capital letter and contain letters only.';
         }
 
         if (empty($model['fields']) || ! is_array($model['fields'])) {
@@ -109,14 +134,69 @@ app/PIM/customer_order.json');
             $name = $f['name'] ?? '';
 
             if (! preg_match('/^[a-z][A-Za-z]*$/', $name) || $name === 'id') {
-                return "Field name \"{$name}\" is not allowed. Use letters only, "
-                    . 'start with a small letter, and do not use id.';
+                return "Invalid field name: {$name}";
             }
 
             if (! isset($this->ci4Types[$f['type'] ?? ''])) {
-                $allowed = implode(', ', array_keys($this->ci4Types));
+                return "Unknown field type for {$name}.";
+            }
+        }
 
-                return "Field \"{$name}\" has an unknown type. Use one of: {$allowed}.";
+        return null;
+    }
+
+    private function checkMarks($model, $marks): ?string
+    {
+        if (! is_array($marks)) {
+            return 'The marking model is not valid JSON.';
+        }
+
+        if (($marks['entity'] ?? null) !== $model['entity']) {
+            return 'The marking model entity does not match the PIM entity.';
+        }
+
+        $table = $marks['marks']['tableName'] ?? null;
+
+        if ($table !== null && ! preg_match('/^[a-z][a-z0-9_]*$/', $table)) {
+            return 'tableName must contain lowercase letters, numbers, or underscores.';
+        }
+
+        $knownFields = array_column($model['fields'], 'name');
+
+        foreach (($marks['fields'] ?? []) as $name => $fieldMarks) {
+            if (! in_array($name, $knownFields, true)) {
+                return "Unknown field in marking model: {$name}";
+            }
+
+            if (! is_array($fieldMarks)) {
+                return "Marks for {$name} must be an object.";
+            }
+
+            if (isset($fieldMarks['unique']) && ! is_bool($fieldMarks['unique'])) {
+                return "The unique mark for {$name} must be true or false.";
+            }
+
+            if (isset($fieldMarks['size'])) {
+                if (
+                    ! is_int($fieldMarks['size'])
+                    || $fieldMarks['size'] < 1
+                    || $fieldMarks['size'] > 500
+                ) {
+                    return "The size mark for {$name} must be an integer from 1 to 500.";
+                }
+
+                $fieldType = null;
+
+                foreach ($model['fields'] as $field) {
+                    if ($field['name'] === $name) {
+                        $fieldType = $field['type'];
+                        break;
+                    }
+                }
+
+                if ($fieldType !== 'text') {
+                    return "The size mark can only be applied to text fields: {$name}.";
+                }
             }
         }
 
@@ -134,7 +214,8 @@ app/PIM/customer_order.json');
             . "'unsigned' => true, 'auto_increment' => true],\n";
 
         foreach ($fields as $f) {
-            [$dbType, $size] = $this->ci4Types[$f['type']];
+            [$dbType, $defaultSize] = $this->ci4Types[$f['type']];
+            $size = $f['size'] ?? $defaultSize;
 
             $part = "'type' => '{$dbType}'";
 
@@ -148,6 +229,14 @@ app/PIM/customer_order.json');
             $lines .= "            '{$f['column']}' => [{$part}],\n";
         }
 
+        $uniqueKeys = '';
+
+        foreach ($fields as $f) {
+            if ($f['unique']) {
+                $uniqueKeys .= "        \$this->forge->addUniqueKey('{$f['column']}');\n";
+            }
+        }
+
         $class = "Create{$entity}Table";
 
         $code = "<?php\n\nnamespace App\\Database\\Migrations;\n\n"
@@ -156,6 +245,7 @@ app/PIM/customer_order.json');
             . "    public function up()\n    {\n"
             . "        \$this->forge->addField([\n{$lines}        ]);\n"
             . "        \$this->forge->addKey('id', true);\n"
+            . $uniqueKeys
             . "        \$this->forge->createTable('{$table}');\n"
             . "    }\n\n"
             . "    public function down()\n    {\n"
@@ -202,8 +292,21 @@ app/PIM/customer_order.json');
         foreach ($fields as $f) {
             $type = $this->sqlTypes[$f['type']];
 
-            $rows[] = "        {$f['column']} {$type}"
-                . ($f['required'] ? ' NOT NULL' : '');
+            if ($f['size'] !== null) {
+                $type = "VARCHAR({$f['size']})";
+            }
+
+            $row = "        {$f['column']} {$type}";
+
+            if ($f['required']) {
+                $row .= ' NOT NULL';
+            }
+
+            if ($f['unique']) {
+                $row .= ' UNIQUE';
+            }
+
+            $rows[] = $row;
         }
 
         $folder = WRITEPATH . 'generated/';
@@ -223,3 +326,4 @@ app/PIM/customer_order.json');
         CLI::write('Wrote ' . str_replace(ROOTPATH, '', $path), 'green');
     }
 }
+

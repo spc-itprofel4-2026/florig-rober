@@ -1,0 +1,18 @@
+
+{
+    "entity": "SuspiciousTransactionRecord",
+    "marks": {
+        "tableName": "suspicious_transaction_records"
+    },
+    "fields": {
+        "transactionId": {
+            "unique"	: true
+        },
+        "alertStatus": {
+            "size": 30
+        },
+        "alertReason": {
+            "size": 255
+        }
+    }
+}

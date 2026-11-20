@@ -1,0 +1,17 @@
+{
+    "entity": "SuspiciousTransactionRecord",
+    "marks": {
+        "tableName": "fraud_review_records"
+    },
+    "fields": {
+        "transactionId": {
+            "unique": true
+        },
+        "alertStatus": {
+            "size": 20
+        },
+        "alertReason": {
+            "size": 500
+        }
+    }
+}

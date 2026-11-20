@@ -1,0 +1,30 @@
+{
+    "entity": "SuspiciousTransactionRecord",
+    "fields": [
+        {
+            "name": "transactionId",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "userId",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "riskScore",
+            "type": "decimal",
+            "required": true
+        },
+        {
+            "name": "alertStatus",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "alertReason",
+            "type": "text",
+            "required": false
+        }
+    ]
+}
