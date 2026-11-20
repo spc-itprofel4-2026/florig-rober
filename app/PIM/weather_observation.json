@@ -1,0 +1,30 @@
+{
+    "entity": "WeatherObservation",
+    "fields": [
+        {
+            "name": "city",
+            "type": "text",
+            "required": true
+        },
+        {
+            "name": "temperature",
+            "type": "decimal",
+            "required": true
+        },
+        {
+            "name": "humidity",
+            "type": "wholenumber",
+            "required": true
+        },
+        {
+            "name": "condition",
+            "type": "text",
+            "required": false
+        },
+        {
+            "name": "observedAt",
+            "type": "datetime",
+            "required": true
+        }
+    ]
+}
